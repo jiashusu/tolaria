@@ -5,6 +5,7 @@ import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { markdown } from '@codemirror/lang-markdown'
 import { syntaxHighlighting, defaultHighlightStyle, bracketMatching } from '@codemirror/language'
 import { oneDark } from '@codemirror/theme-one-dark'
+import { livePreview } from './livePreview'
 import type { VaultEntry } from '../types'
 import './Editor.css'
 
@@ -68,6 +69,7 @@ export function Editor({ content, selectedNote }: EditorProps) {
         syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
         oneDark,
         editorTheme,
+        livePreview(),
         keymap.of([...defaultKeymap, ...historyKeymap]),
         EditorView.lineWrapping,
       ],
