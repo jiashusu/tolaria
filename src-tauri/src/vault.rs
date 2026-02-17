@@ -962,5 +962,150 @@ Custom Field: just a plain string
         assert!(entry.relationships.is_empty());
     }
 
+    #[test]
+    fn test_parse_relationships_many_generic_fields() {
+        // Verifies that Has, Topics, Events, Notes, and other custom fields
+        // all populate the generic relationships HashMap.
+        let dir = TempDir::new().unwrap();
+        let content = r#"---
+Is A: Project
+Has:
+  - "[[deliverable/mvp]]"
+  - "[[deliverable/v2]]"
+Topics:
+  - "[[topic/ai]]"
+  - "[[topic/compilers]]"
+Events:
+  - "[[event/launch-day]]"
+Notes:
+  - "[[note/design-rationale]]"
+  - "[[note/meeting-2024-01]]"
+  - "[[note/meeting-2024-02]]"
+Owner: "[[person/alice]]"
+Related to:
+  - "[[project/sibling-project]]"
+Belongs to:
+  - "[[area/engineering]]"
+Status: Active
+---
+# Big Project
+"#;
+        create_test_file(dir.path(), "big-project.md", content);
+
+        let entry = parse_md_file(&dir.path().join("big-project.md")).unwrap();
+
+        // All wikilink fields should appear in relationships
+        assert_eq!(entry.relationships.get("Has").unwrap().len(), 2);
+        assert_eq!(entry.relationships.get("Topics").unwrap().len(), 2);
+        assert_eq!(entry.relationships.get("Events").unwrap().len(), 1);
+        assert_eq!(entry.relationships.get("Notes").unwrap().len(), 3);
+        assert_eq!(
+            entry.relationships.get("Owner").unwrap(),
+            &vec!["[[person/alice]]".to_string()]
+        );
+        assert_eq!(entry.relationships.get("Related to").unwrap().len(), 1);
+        assert_eq!(entry.relationships.get("Belongs to").unwrap().len(), 1);
+
+        // Status is in SKIP_KEYS, should NOT be in relationships
+        assert!(entry.relationships.get("Status").is_none());
+        // Is A is in SKIP_KEYS, should NOT be in relationships
+        assert!(entry.relationships.get("Is A").is_none());
+    }
+
+    #[test]
+    fn test_parse_relationships_single_vs_array_wikilinks() {
+        // Verifies both single wikilink strings and arrays are parsed correctly.
+        let dir = TempDir::new().unwrap();
+        let content = r#"---
+Mentor: "[[person/bob|Bob Smith]]"
+Reviewers:
+  - "[[person/carol]]"
+  - "[[person/dave]]"
+Context: "[[area/research]]"
+---
+# A Note
+"#;
+        create_test_file(dir.path(), "single-vs-array.md", content);
+
+        let entry = parse_md_file(&dir.path().join("single-vs-array.md")).unwrap();
+
+        // Single string → Vec with one element
+        assert_eq!(
+            entry.relationships.get("Mentor").unwrap(),
+            &vec!["[[person/bob|Bob Smith]]".to_string()]
+        );
+        // Array → Vec with multiple elements
+        assert_eq!(
+            entry.relationships.get("Reviewers").unwrap(),
+            &vec!["[[person/carol]]".to_string(), "[[person/dave]]".to_string()]
+        );
+        // Another single string
+        assert_eq!(
+            entry.relationships.get("Context").unwrap(),
+            &vec!["[[area/research]]".to_string()]
+        );
+    }
+
+    #[test]
+    fn test_parse_relationships_skip_keys_excluded() {
+        // Verifies that all SKIP_KEYS are excluded even when they contain wikilinks.
+        let dir = TempDir::new().unwrap();
+        let content = r#"---
+Is A: "[[type/project]]"
+Aliases:
+  - "[[alias/foo]]"
+Status: "[[status/active]]"
+Cadence: "[[cadence/weekly]]"
+Created at: "[[time/2024-01-01]]"
+Created time: "[[time/noon]]"
+Real Relation: "[[note/important]]"
+---
+# Skip Keys Test
+"#;
+        create_test_file(dir.path(), "skip-keys.md", content);
+
+        let entry = parse_md_file(&dir.path().join("skip-keys.md")).unwrap();
+
+        // All SKIP_KEYS should be excluded from relationships
+        assert!(entry.relationships.get("Is A").is_none());
+        assert!(entry.relationships.get("Aliases").is_none());
+        assert!(entry.relationships.get("Status").is_none());
+        assert!(entry.relationships.get("Cadence").is_none());
+        assert!(entry.relationships.get("Created at").is_none());
+        assert!(entry.relationships.get("Created time").is_none());
+
+        // Non-skip key with wikilink should still be included
+        assert_eq!(
+            entry.relationships.get("Real Relation").unwrap(),
+            &vec!["[[note/important]]".to_string()]
+        );
+        // Only 1 relationship total
+        assert_eq!(entry.relationships.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_relationships_mixed_wikilinks_and_plain_in_array() {
+        // Verifies that within an array, only wikilink entries are kept.
+        let dir = TempDir::new().unwrap();
+        let content = r#"---
+References:
+  - "[[source/paper-a]]"
+  - "just a plain string"
+  - "[[source/paper-b]]"
+  - "no links here"
+---
+# Mixed Array
+"#;
+        create_test_file(dir.path(), "mixed-array.md", content);
+
+        let entry = parse_md_file(&dir.path().join("mixed-array.md")).unwrap();
+
+        // Only the wikilink entries should be captured
+        assert_eq!(
+            entry.relationships.get("References").unwrap(),
+            &vec!["[[source/paper-a]]".to_string(), "[[source/paper-b]]".to_string()]
+        );
+    }
+
     // Frontmatter update/delete tests are in frontmatter.rs
 }
