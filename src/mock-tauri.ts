@@ -1109,9 +1109,11 @@ const mockHandlers: Record<string, (args: any) => any> = {
   git_push: () => {
     return 'Everything up-to-date'
   },
-  save_image: (args: { filename: string; data: string }) => {
-    // In mock mode, return a data URL so the image displays in the editor
-    return `data:image/png;base64,${args.data}`
+  save_image: (args: { vault_path?: string; filename: string; data: string }) => {
+    // Return a plausible file path matching the real Rust backend behavior
+    const vault = args.vault_path ?? '/Users/luca/Laputa'
+    const timestamp = Date.now()
+    return `${vault}/attachments/${timestamp}-${args.filename}`
   },
 }
 

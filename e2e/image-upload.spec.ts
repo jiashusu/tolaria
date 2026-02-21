@@ -11,7 +11,7 @@ function createTestPng(filepath: string) {
   fs.writeFileSync(filepath, Buffer.from(TEST_PNG_BASE64, 'base64'))
 }
 
-test('image upload via file picker displays image with blob URL', async ({ page }) => {
+test('image upload via file picker displays image with data URL', async ({ page }) => {
   await page.goto('/')
   await page.waitForTimeout(1000)
 
@@ -50,9 +50,9 @@ test('image upload via file picker displays image with blob URL', async ({ page 
   const imageCount = await images.count()
   expect(imageCount).toBeGreaterThan(0)
 
-  // Verify: image uses blob URL (not stuck on empty or data URL)
+  // Verify: image uses data URL (stable, survives reload in dev mode)
   const src = await images.first().getAttribute('src')
-  expect(src).toMatch(/^blob:/)
+  expect(src).toMatch(/^data:/)
 
   // Verify: no "Loading..." elements remain
   const loadingEls = page.locator('.bn-file-loading-preview')

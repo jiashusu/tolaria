@@ -4,7 +4,7 @@ import { filterSuggestionItems } from '@blocknote/core/extensions'
 import { createReactInlineContentSpec, useCreateBlockNote, SuggestionMenuController } from '@blocknote/react'
 import { BlockNoteView } from '@blocknote/mantine'
 import '@blocknote/mantine/style.css'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke, convertFileSrc } from '@tauri-apps/api/core'
 import { isTauri } from '../mock-tauri'
 import type { VaultEntry, GitCommit } from '../types'
 import { Inspector, type FrontmatterValue } from './Inspector'
@@ -164,28 +164,27 @@ export const Editor = memo(function Editor({
   const editor = useCreateBlockNote({
     schema,
     uploadFile: async (file: File) => {
-      // Use blob URL for immediate display — lightweight and avoids encoding large files as data URLs
-      const blobUrl = URL.createObjectURL(file)
-
-      // In Tauri mode, persist the file to the vault's attachments directory (fire-and-forget)
       if (isTauri() && vaultPathRef.current) {
-        const vaultPath = vaultPathRef.current
-        file.arrayBuffer().then(buf => {
-          const bytes = new Uint8Array(buf)
-          let binary = ''
-          for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-          const base64 = btoa(binary)
-          if (base64) {
-            invoke('save_image', {
-              vaultPath,
-              filename: file.name,
-              data: base64,
-            }).catch(err => console.warn('Failed to save image to vault:', err))
-          }
-        }).catch(err => console.warn('Failed to read image for vault save:', err))
+        // Tauri mode: save to vault/attachments and return a stable asset URL
+        const buf = await file.arrayBuffer()
+        const bytes = new Uint8Array(buf)
+        let binary = ''
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+        const base64 = btoa(binary)
+        const savedPath = await invoke<string>('save_image', {
+          vaultPath: vaultPathRef.current,
+          filename: file.name,
+          data: base64,
+        })
+        return convertFileSrc(savedPath)
       }
-
-      return blobUrl
+      // Browser dev mode: use data URL (survives reload, acceptable for dev)
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = () => reject(reader.error)
+        reader.readAsDataURL(file)
+      })
     },
   })
   // Cache parsed blocks per tab path for instant switching
