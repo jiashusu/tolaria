@@ -199,6 +199,7 @@ fn configure_remote_auth(local_path: &str, original_url: &str, token: &str) -> R
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::process::Command as StdCommand;
 
     #[test]
     fn test_inject_token_basic_github_url() {
@@ -225,6 +226,20 @@ mod tests {
     }
 
     #[test]
+    fn test_inject_token_http_url_rejected() {
+        let url = "http://github.com/user/repo.git";
+        let result = inject_token_into_url(url, "token");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_inject_token_github_without_dot_git() {
+        let url = "https://github.com/user/repo";
+        let result = inject_token_into_url(url, "tok").unwrap();
+        assert_eq!(result, "https://oauth2:tok@github.com/user/repo");
+    }
+
+    #[test]
     fn test_clone_repo_nonempty_dest() {
         let dir = tempfile::TempDir::new().unwrap();
         let path = dir.path();
@@ -233,5 +248,85 @@ mod tests {
         let result = clone_repo("https://github.com/test/repo.git", "token", path.to_str().unwrap());
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("not empty"));
+    }
+
+    #[test]
+    fn test_clone_repo_ssh_url_rejected() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let dest = dir.path().join("new-clone");
+
+        let result = clone_repo("git@github.com:user/repo.git", "token", dest.to_str().unwrap());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Unsupported URL format"));
+    }
+
+    #[test]
+    fn test_clone_repo_empty_dest_allowed() {
+        // An empty existing directory should not be rejected
+        let dir = tempfile::TempDir::new().unwrap();
+        let dest = dir.path().join("empty-dir");
+        std::fs::create_dir(&dest).unwrap();
+
+        // This will fail at the git clone step (invalid URL) but should pass the directory check
+        let result = clone_repo("https://github.com/nonexistent/repo.git", "token", dest.to_str().unwrap());
+        assert!(result.is_err());
+        // Should fail at git clone, not at directory check
+        assert!(result.unwrap_err().contains("git clone failed"));
+    }
+
+    #[test]
+    fn test_configure_remote_auth_on_git_repo() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path();
+
+        // Initialize a git repo
+        StdCommand::new("git").args(["init"]).current_dir(path).output().unwrap();
+        StdCommand::new("git").args(["remote", "add", "origin", "https://github.com/user/repo.git"])
+            .current_dir(path).output().unwrap();
+
+        let result = configure_remote_auth(
+            path.to_str().unwrap(),
+            "https://github.com/user/repo.git",
+            "gho_test123",
+        );
+        assert!(result.is_ok());
+
+        // Verify the remote URL was updated
+        let output = StdCommand::new("git")
+            .args(["remote", "get-url", "origin"])
+            .current_dir(path)
+            .output()
+            .unwrap();
+        let url = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        assert_eq!(url, "https://oauth2:gho_test123@github.com/user/repo.git");
+    }
+
+    #[test]
+    fn test_github_repo_serialization() {
+        let repo = GithubRepo {
+            name: "test-repo".to_string(),
+            full_name: "user/test-repo".to_string(),
+            description: Some("A test repo".to_string()),
+            private: true,
+            clone_url: "https://github.com/user/test-repo.git".to_string(),
+            html_url: "https://github.com/user/test-repo".to_string(),
+            updated_at: Some("2026-02-20T10:00:00Z".to_string()),
+        };
+        let json = serde_json::to_string(&repo).unwrap();
+        let parsed: GithubRepo = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.name, "test-repo");
+        assert_eq!(parsed.full_name, "user/test-repo");
+        assert!(parsed.private);
+        assert_eq!(parsed.description, Some("A test repo".to_string()));
+    }
+
+    #[test]
+    fn test_github_repo_deserialization_null_fields() {
+        let json = r#"{"name":"r","full_name":"u/r","description":null,"private":false,"clone_url":"https://x","html_url":"https://y","updated_at":null}"#;
+        let repo: GithubRepo = serde_json::from_str(json).unwrap();
+        assert_eq!(repo.name, "r");
+        assert!(repo.description.is_none());
+        assert!(repo.updated_at.is_none());
+        assert!(!repo.private);
     }
 }
