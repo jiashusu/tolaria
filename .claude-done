@@ -1,36 +1,19 @@
-# Bug Fix: Editor Auto-Save
+## editor-save-bug — Done
 
-## What was fixed
-The editor was not saving changes to disk. Editing a note and switching tabs or closing the app would lose all changes.
+### What was changed
+1. **Removed broken auto-save**: Deleted `useAutoSave` hook (debounced save) which was causing the editor to reload previous content on every keystroke.
+2. **Added explicit Cmd+S save**: New `useSaveNote` + `useEditorSave` hooks. Editor onChange buffers content in a ref; Cmd+S persists to disk. Shows "Saved" toast on success, "Nothing to save" when clean.
+3. **Fixed rename-before-save**: `handleRenameTab` now calls `savePendingForPath(path)` before executing the rename, ensuring the file on disk is up to date. No more "Failed to rename note" error.
 
-## Root cause
-No `save_note_content` Tauri command existed, no `onChange` handler on the BlockNote editor, and no save mechanism of any kind for body content (only frontmatter updates were saved).
-
-## Implementation
-
-### Backend (Rust)
-- Added `save_note_content()` in `vault.rs` with path validation (parent dir existence, read-only check)
-- Registered the Tauri command in `lib.rs`
-- 5 new Rust tests for save functionality
-
-### Frontend
-- **`useAutoSave` hook** — 500ms debounced save via Tauri command, with `flush()` for immediate save on tab switch
-- **`Editor.tsx` onChange** — Serializes BlockNote blocks back to markdown, restores wikilinks, reconstructs full file (frontmatter + title + body), passes to auto-save
-- **`suppressChangeRef`** — Prevents false saves during programmatic content swaps (tab switching)
-- **`restoreWikilinksInBlocks()`** — Reverse of `injectWikilinks`, collapses wikilink inline nodes back to `[[target]]` syntax
-- **Shared `walkBlocks()` helper** — Extracted to eliminate code duplication between inject/restore
-
-### Mock layer
-- Added `save_note_content` handler in `mock-tauri.ts` for browser testing
+### Architecture decisions
+- **No auto-save by design**: Consistent with git-based UX. User explicitly saves with Cmd+S, then commits when ready.
+- **Pending content tracked via ref** (not state): Avoids unnecessary re-renders on every keystroke. The ref holds `{ path, content }` set by Editor onChange, read by handleSave.
+- **useEditorSave extracted from App**: Reduces App component cyclomatic complexity (CodeScene quality gate passed).
 
 ### Tests
-- 12 new frontend tests (6 for useAutoSave, 6 for wikilink restoration)
-- 5 new Rust tests for save_note_content
-- E2E test verifying editor loads and renders correctly
-- All 469 frontend + 174 Rust tests passing
-- Coverage thresholds maintained
-
-## Key decisions
-- 500ms debounce balances responsiveness vs disk I/O
-- Flush pending saves on tab switch to prevent data loss
-- Full file reconstruction (frontmatter + title + body) ensures round-trip fidelity
+- 471 unit tests passing (was 466 before)
+- New: `useSaveNote.test.ts` (3 tests), `useEditorSave.test.ts` (5 tests)
+- Updated: `App.test.tsx` (Cmd+S now shows "Nothing to save" when no pending content)
+- E2E: 2 tests passing (editor loads + Cmd+S shortcut works)
+- Coverage: 78.82% (above 70% threshold)
+- CodeScene quality gates: passed
