@@ -3,7 +3,7 @@
     {
       "type": "frame",
       "id": "nnc_pending_save",
-      "name": "New Note Creation — Pending Save State",
+      "name": "New Note Creation — Unsaved State (Cmd+N)",
       "x": 0,
       "y": 0,
       "width": 800,
@@ -36,7 +36,7 @@
             {
               "type": "frame",
               "id": "nnc_tab_active",
-              "name": "Tab — New Note (unsaved)",
+              "name": "Tab — Unsaved Note (blue dot + italic)",
               "layout": "horizontal",
               "width": 180,
               "height": 40,
@@ -53,16 +53,17 @@
                   "width": 8,
                   "height": 8,
                   "cornerRadius": 4,
-                  "fill": "#22c55e"
+                  "fill": "#3b82f6"
                 },
                 {
                   "type": "text",
                   "id": "nnc_tab_label",
-                  "content": "Untitled",
+                  "content": "Untitled Note",
                   "fill": "$--foreground",
                   "fontFamily": "Inter",
                   "fontSize": 13,
-                  "fontWeight": "400"
+                  "fontWeight": "400",
+                  "fontStyle": "italic"
                 }
               ]
             }
