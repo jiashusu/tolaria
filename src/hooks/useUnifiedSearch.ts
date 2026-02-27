@@ -36,13 +36,20 @@ function searchWithTimeout(args: Record<string, unknown>, ms: number): Promise<S
 }
 
 function mapResults(raw: SearchResultData[]): SearchResult[] {
-  return raw.map(r => ({
-    title: r.title,
-    path: r.path,
-    snippet: r.snippet,
-    score: r.score,
-    noteType: r.note_type,
-  }))
+  const seen = new Set<string>()
+  return raw
+    .map(r => ({
+      title: r.title,
+      path: r.path,
+      snippet: r.snippet,
+      score: r.score,
+      noteType: r.note_type,
+    }))
+    .filter(r => {
+      if (seen.has(r.path)) return false
+      seen.add(r.path)
+      return true
+    })
 }
 
 export function useUnifiedSearch(vaultPath: string, active: boolean) {
