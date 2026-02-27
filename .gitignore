@@ -41,3 +41,4 @@ final_selection.py
 # Claude Code task signals
 .claude-done
 .claude-blocked
+src-tauri/target
