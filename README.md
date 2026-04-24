@@ -31,6 +31,12 @@ You can find some Loom walkthroughs below — they are short and to the point:
 - ⌨️ **Keyboard-first** — Tolaria is designed for power-users who want to use keyboard as much as possible. A lot of how we designed the Editor and the Command Palette is based on this.
 - 💪 **Built from real use** — Tolaria was created for manage my personal vault of 10,000+ notes, and I use it every day. Every feature exists because it solved a real problem.
 
+## 🌐 Languages / 语言支持
+
+Tolaria supports **English** and **简体中文 (Simplified Chinese)**. Use the language switcher button in the welcome screen or status bar to switch instantly — your preference is saved locally.
+
+Tolaria 支持**英文**和**简体中文**。在欢迎页面或状态栏点击语言切换按钮即可即时切换，偏好设置保存在本地。
+
 ## Getting started
 
 Download the [latest release here](https://github.com/refactoringhq/tolaria/releases/latest/download/Tolaria.app.tar.gz).
