@@ -30,6 +30,9 @@ export function OnboardingShell({
       data-testid={testId}
       onMouseDown={onMouseDown}
     >
+      <div className={contentClassName} style={contentStyle} data-no-drag>
+        {children}
+      </div>
       {topRight && (
         <div
           data-no-drag
@@ -38,9 +41,6 @@ export function OnboardingShell({
           {topRight}
         </div>
       )}
-      <div className={contentClassName} style={contentStyle} data-no-drag>
-        {children}
-      </div>
     </div>
   )
 }

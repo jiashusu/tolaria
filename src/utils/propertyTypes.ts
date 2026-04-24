@@ -116,7 +116,13 @@ export function getEffectiveDisplayMode(
 function resolveDateFromValue(value: string): Date | null {
   const isoMatch = value.match(ISO_DATE_RE)
   if (isoMatch) {
-    const date = new Date(isoMatch[0])
+    // Parse date parts explicitly to get a local-time Date (not UTC midnight),
+    // avoiding timezone-shift bugs like "2026-03-31" → "Mar 30" in UTC-5.
+    // isoMatch[0] may include a time component (e.g. "2026-02-25T10:00"), so
+    // we slice only the first 10 characters to get the YYYY-MM-DD portion.
+    const datePart = isoMatch[0].slice(0, 10)
+    const [yearStr, monthStr, dayStr] = datePart.split('-')
+    const date = new Date(Number(yearStr), Number(monthStr) - 1, Number(dayStr))
     return Number.isNaN(date.getTime()) ? null : date
   }
 
