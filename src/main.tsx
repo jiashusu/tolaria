@@ -3,6 +3,7 @@ import * as Sentry from '@sentry/react'
 import { createRoot } from 'react-dom/client'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import './index.css'
+import './i18n'
 import App from './App.tsx'
 import {
   APP_COMMAND_EVENT_NAME,

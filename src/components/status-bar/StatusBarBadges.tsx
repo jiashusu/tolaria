@@ -1,4 +1,6 @@
 import { useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import {
   AlertTriangle,
   ArrowDown,
@@ -26,53 +28,49 @@ const SYNC_ICON_MAP: Record<string, typeof RefreshCw> = {
   pull_required: ArrowDown,
 }
 
-const SYNC_LABELS: Record<string, string> = {
-  syncing: 'Syncing…',
-  conflict: 'Conflict',
-  error: 'Sync failed',
-  pull_required: 'Pull required',
-}
-
-const SYNC_COLORS: Record<string, string> = {
-  conflict: 'var(--accent-orange)',
-  error: 'var(--muted-foreground)',
-  pull_required: 'var(--accent-orange)',
-}
-
-const MCP_TOOLTIPS: Partial<Record<McpStatus, string>> = {
-  not_installed: 'External AI tools not connected — click to set up',
-}
-
 const CLAUDE_INSTALL_URL = 'https://docs.anthropic.com/en/docs/claude-code'
 
-function formatElapsedSync(lastSyncTime: number | null): string {
-  if (!lastSyncTime) return 'Not synced'
+function formatElapsedSync(lastSyncTime: number | null, t: TFunction): string {
+  if (!lastSyncTime) return t('status_bar.not_synced')
   const secs = Math.round((Date.now() - lastSyncTime) / 1000)
-  return secs < 60 ? 'Synced just now' : `Synced ${Math.floor(secs / 60)}m ago`
+  return secs < 60
+    ? t('status_bar.synced_just_now')
+    : t('status_bar.synced_ago', { minutes: Math.floor(secs / 60) })
 }
 
-function formatSyncLabel(status: SyncStatus, lastSyncTime: number | null): string {
-  return SYNC_LABELS[status] ?? formatElapsedSync(lastSyncTime)
+function formatSyncLabel(status: SyncStatus, lastSyncTime: number | null, t: TFunction): string {
+  const labels: Record<string, string> = {
+    syncing: t('status_bar.syncing'),
+    conflict: t('status_bar.conflict'),
+    error: t('status_bar.sync_failed'),
+    pull_required: t('status_bar.pull_required'),
+  }
+  return labels[status] ?? formatElapsedSync(lastSyncTime, t)
 }
 
 function syncIconColor(status: SyncStatus): string {
-  return SYNC_COLORS[status] ?? 'var(--accent-green)'
+  const colors: Record<string, string> = {
+    conflict: 'var(--accent-orange)',
+    error: 'var(--muted-foreground)',
+    pull_required: 'var(--accent-orange)',
+  }
+  return colors[status] ?? 'var(--accent-green)'
 }
 
-function syncBadgeTooltipCopy(status: SyncStatus): ActionTooltipCopy {
-  if (status === 'conflict') return { label: 'Resolve merge conflicts' }
-  if (status === 'syncing') return { label: 'Sync in progress' }
-  if (status === 'pull_required') return { label: 'Pull from remote and push' }
-  if (status === 'error') return { label: 'Retry sync' }
-  return { label: 'Sync now' }
+function syncBadgeTooltipCopy(status: SyncStatus, t: TFunction): ActionTooltipCopy {
+  if (status === 'conflict') return { label: t('status_bar.resolve_conflicts') }
+  if (status === 'syncing') return { label: t('status_bar.sync_in_progress') }
+  if (status === 'pull_required') return { label: t('status_bar.pull_and_push') }
+  if (status === 'error') return { label: t('status_bar.retry_sync') }
+  return { label: t('status_bar.sync_now') }
 }
 
-function syncStatusText(status: SyncStatus): string {
-  if (status === 'idle') return 'Synced'
-  if (status === 'pull_required') return 'Pull required'
-  if (status === 'conflict') return 'Conflicts'
-  if (status === 'error') return 'Error'
-  if (status === 'syncing') return 'Syncing…'
+function syncStatusText(status: SyncStatus, t: TFunction): string {
+  if (status === 'idle') return t('status_bar.synced')
+  if (status === 'pull_required') return t('status_bar.pull_required')
+  if (status === 'conflict') return t('status_bar.conflicts')
+  if (status === 'error') return t('status_bar.error')
+  if (status === 'syncing') return t('status_bar.syncing')
   return status
 }
 
@@ -84,31 +82,33 @@ function isRemoteMissing(remoteStatus: GitRemoteStatus | null | undefined): bool
   return remoteStatus?.hasRemote === false
 }
 
-function commitButtonTooltipCopy(remoteStatus: GitRemoteStatus | null | undefined): ActionTooltipCopy {
+function commitButtonTooltipCopy(remoteStatus: GitRemoteStatus | null | undefined, t: TFunction): ActionTooltipCopy {
   return {
     label: isRemoteMissing(remoteStatus)
-      ? 'Commit changes locally'
-      : 'Commit and push changes',
+      ? t('status_bar.commit_local')
+      : t('status_bar.commit_and_push'),
   }
 }
 
-function getMcpBadgeConfig(status: McpStatus, onInstall?: () => void) {
+function getMcpBadgeConfig(status: McpStatus, t: TFunction, onInstall?: () => void) {
   if (status === 'installed' || status === 'checking') return null
   const clickable = status === 'not_installed' && Boolean(onInstall)
   return {
     clickable,
-    tooltip: MCP_TOOLTIPS[status] ?? 'MCP status unknown',
+    tooltip: status === 'not_installed' ? t('status_bar.mcp_not_connected') : t('status_bar.mcp_unknown'),
     onClick: clickable ? onInstall : undefined,
   }
 }
 
-function getClaudeCodeBadgeConfig(status: ClaudeCodeStatus, version?: string | null) {
+function getClaudeCodeBadgeConfig(status: ClaudeCodeStatus, t: TFunction, version?: string | null) {
   if (status === 'checking') return null
   const missing = status === 'missing'
   return {
     missing,
-    label: missing ? 'Claude Code missing' : 'Claude Code',
-    tooltip: missing ? 'Claude Code not found — click to install' : `Claude Code${version ? ` ${version}` : ''}`,
+    label: missing ? t('status_bar.claude_code_missing') : 'Claude Code',
+    tooltip: missing
+      ? t('status_bar.claude_not_found')
+      : `Claude Code${version ? ` ${version}` : ''}`,
     onActivate: missing ? () => openExternalUrl(CLAUDE_INSTALL_URL) : undefined,
   }
 }
@@ -167,23 +167,32 @@ function StatusBarAction({
 }
 
 function RemoteStatusSummary({ remoteStatus }: { remoteStatus: GitRemoteStatus | null }) {
+  const { t } = useTranslation()
+
   if (!hasRemote(remoteStatus)) {
-    return <div style={{ color: 'var(--muted-foreground)', marginBottom: 6 }}>No remote configured</div>
+    return <div style={{ color: 'var(--muted-foreground)', marginBottom: 6 }}>{t('status_bar.no_remote_configured')}</div>
   }
 
   const ahead = remoteStatus?.ahead ?? 0
   const behind = remoteStatus?.behind ?? 0
 
   if (ahead === 0 && behind === 0) {
-    return <div style={{ display: 'flex', gap: 12, marginBottom: 6, color: 'var(--muted-foreground)' }}>In sync with remote</div>
+    return <div style={{ display: 'flex', gap: 12, marginBottom: 6, color: 'var(--muted-foreground)' }}>{t('status_bar.in_sync')}</div>
   }
 
   return (
     <div style={{ display: 'flex', gap: 12, marginBottom: 6, color: 'var(--muted-foreground)' }}>
-      {ahead > 0 && <span title={`${ahead} commit${ahead > 1 ? 's' : ''} ahead of remote`}>↑ {ahead} ahead</span>}
+      {ahead > 0 && (
+        <span title={t('status_bar.ahead', { count: ahead })}>
+          {t('status_bar.ahead', { count: ahead })}
+        </span>
+      )}
       {behind > 0 && (
-        <span title={`${behind} commit${behind > 1 ? 's' : ''} behind remote`} style={{ color: 'var(--accent-orange)' }}>
-          ↓ {behind} behind
+        <span
+          title={t('status_bar.behind', { count: behind })}
+          style={{ color: 'var(--accent-orange)' }}
+        >
+          {t('status_bar.behind', { count: behind })}
         </span>
       )}
     </div>
@@ -199,6 +208,8 @@ function PullAction({
   onPull?: () => void
   onClose: () => void
 }) {
+  const { t } = useTranslation()
+
   if (!hasRemote(remoteStatus)) return null
 
   return (
@@ -224,7 +235,8 @@ function PullAction({
         onMouseLeave={(event) => { event.currentTarget.style.background = 'transparent' }}
         data-testid="git-status-pull-btn"
       >
-        <ArrowDown size={11} />Pull
+        <ArrowDown size={11} />
+        {t('status_bar.pull')}
       </button>
     </div>
   )
@@ -241,6 +253,8 @@ function GitStatusPopup({
   onPull?: () => void
   onClose: () => void
 }) {
+  const { t } = useTranslation()
+
   return (
     <div
       data-testid="git-status-popup"
@@ -266,7 +280,7 @@ function GitStatusPopup({
       </div>
       <RemoteStatusSummary remoteStatus={remoteStatus} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, color: 'var(--muted-foreground)' }}>
-        Status: {syncStatusText(status)}
+        {t('status_bar.status_label')}: {syncStatusText(status, t)}
       </div>
       <PullAction remoteStatus={remoteStatus} onPull={onPull} onClose={onClose} />
     </div>
@@ -302,6 +316,8 @@ export function CommitBadge({ info }: { info: LastCommitInfo }) {
 }
 
 export function OfflineBadge({ isOffline }: { isOffline?: boolean }) {
+  const { t } = useTranslation()
+
   if (!isOffline) return null
 
   return (
@@ -316,13 +332,11 @@ export function OfflineBadge({ isOffline }: { isOffline?: boolean }) {
           padding: '2px 6px',
           fontWeight: 600,
         }}
-        title="No internet connection"
+        title={t('status_bar.no_internet')}
         data-testid="status-offline"
       >
-        <span aria-hidden="true" style={{ fontSize: 10, lineHeight: 1 }}>
-          ●
-        </span>
-        Offline
+        <span aria-hidden="true" style={{ fontSize: 10, lineHeight: 1 }}>●</span>
+        {t('status_bar.offline')}
       </span>
     </>
   )
@@ -335,6 +349,8 @@ export function NoRemoteBadge({
   remoteStatus?: GitRemoteStatus | null
   onAddRemote?: () => void
 }) {
+  const { t } = useTranslation()
+
   if (!isRemoteMissing(remoteStatus)) return null
 
   if (onAddRemote) {
@@ -342,13 +358,13 @@ export function NoRemoteBadge({
       <>
         <span style={SEP_STYLE}>|</span>
         <StatusBarAction
-          copy={{ label: 'Add a remote to this vault' }}
+          copy={{ label: t('status_bar.add_remote') }}
           onClick={onAddRemote}
           testId="status-no-remote"
         >
           <span style={ICON_STYLE}>
             <GitBranch size={12} />
-            No remote
+            {t('status_bar.no_remote')}
           </span>
         </StatusBarAction>
       </>
@@ -367,11 +383,11 @@ export function NoRemoteBadge({
           padding: '2px 6px',
           fontWeight: 600,
         }}
-        title="This git vault has no remote configured. Commits stay local until you add one."
+        title={t('status_bar.no_remote_title')}
         data-testid="status-no-remote"
       >
         <GitBranch size={12} />
-        No remote
+        {t('status_bar.no_remote')}
       </span>
     </>
   )
@@ -392,6 +408,7 @@ export function SyncBadge({
   onPullAndPush?: () => void
   onOpenConflictResolver?: () => void
 }) {
+  const { t } = useTranslation()
   const [showPopup, setShowPopup] = useState(false)
   const popupRef = useRef<HTMLDivElement>(null)
   const SyncIcon = SYNC_ICON_MAP[status] ?? RefreshCw
@@ -415,10 +432,10 @@ export function SyncBadge({
 
   return (
     <div ref={popupRef} style={{ position: 'relative' }}>
-      <StatusBarAction copy={syncBadgeTooltipCopy(status)} onClick={handleClick} testId="status-sync">
+      <StatusBarAction copy={syncBadgeTooltipCopy(status, t)} onClick={handleClick} testId="status-sync">
         <span style={ICON_STYLE}>
           <SyncIcon size={13} style={{ color: syncIconColor(status) }} className={isSyncing ? 'animate-spin' : ''} />
-          {formatSyncLabel(status, lastSyncTime)}
+          {formatSyncLabel(status, lastSyncTime, t)}
         </span>
       </StatusBarAction>
       {showPopup && (
@@ -434,20 +451,22 @@ export function SyncBadge({
 }
 
 export function ConflictBadge({ count, onClick }: { count: number; onClick?: () => void }) {
+  const { t } = useTranslation()
+
   if (count <= 0) return null
 
   return (
     <>
       <span style={SEP_STYLE}>|</span>
       <StatusBarAction
-        copy={{ label: 'Resolve merge conflicts' }}
+        copy={{ label: t('status_bar.resolve_conflicts') }}
         onClick={onClick}
         testId="status-conflict-count"
         className="text-[var(--destructive,#e03e3e)]"
       >
         <span style={ICON_STYLE}>
           <AlertTriangle size={13} />
-          {count} conflict{count > 1 ? 's' : ''}
+          {t('status_bar.conflict_count', { count })}
         </span>
       </StatusBarAction>
     </>
@@ -455,12 +474,14 @@ export function ConflictBadge({ count, onClick }: { count: number; onClick?: () 
 }
 
 export function ChangesBadge({ count, onClick }: { count: number; onClick?: () => void }) {
+  const { t } = useTranslation()
+
   if (count <= 0) return null
 
   return (
     <>
       <span style={SEP_STYLE}>|</span>
-      <StatusBarAction copy={{ label: 'View pending changes' }} onClick={onClick} testId="status-modified-count">
+      <StatusBarAction copy={{ label: t('status_bar.view_pending') }} onClick={onClick} testId="status-modified-count">
         <span style={ICON_STYLE}>
           <GitDiff size={13} style={{ color: 'var(--accent-orange)' }} />
           <span
@@ -480,7 +501,7 @@ export function ChangesBadge({ count, onClick }: { count: number; onClick?: () =
           >
             {count}
           </span>
-          Changes
+          {t('status_bar.changes')}
         </span>
       </StatusBarAction>
     </>
@@ -494,15 +515,17 @@ export function CommitButton({
   onClick?: () => void
   remoteStatus?: GitRemoteStatus | null
 }) {
+  const { t } = useTranslation()
+
   if (!onClick) return null
 
   return (
     <>
       <span style={SEP_STYLE}>|</span>
-      <StatusBarAction copy={commitButtonTooltipCopy(remoteStatus)} onClick={onClick} testId="status-commit-push">
+      <StatusBarAction copy={commitButtonTooltipCopy(remoteStatus, t)} onClick={onClick} testId="status-commit-push">
         <span style={ICON_STYLE}>
           <GitCommitHorizontal size={13} />
-          Commit
+          {t('status_bar.commit')}
         </span>
       </StatusBarAction>
     </>
@@ -510,18 +533,20 @@ export function CommitButton({
 }
 
 export function PulseBadge({ onClick, disabled }: { onClick?: () => void; disabled?: boolean }) {
+  const { t } = useTranslation()
+
   return (
     <>
       <span style={SEP_STYLE}>|</span>
       <StatusBarAction
-        copy={{ label: disabled ? 'History is only available for git-enabled vaults' : 'Open change history' }}
+        copy={{ label: disabled ? t('status_bar.history_git_only') : t('status_bar.open_history') }}
         onClick={disabled ? undefined : onClick}
         testId="status-pulse"
         disabled={Boolean(disabled)}
       >
         <span style={ICON_STYLE}>
           <Pulse size={13} />
-          History
+          {t('status_bar.history')}
         </span>
       </StatusBarAction>
     </>
@@ -529,7 +554,9 @@ export function PulseBadge({ onClick, disabled }: { onClick?: () => void; disabl
 }
 
 export function McpBadge({ status, onInstall }: { status: McpStatus; onInstall?: () => void }) {
-  const config = getMcpBadgeConfig(status, onInstall)
+  const { t } = useTranslation()
+  const config = getMcpBadgeConfig(status, t, onInstall)
+
   if (!config) return null
 
   return (
@@ -552,7 +579,9 @@ export function McpBadge({ status, onInstall }: { status: McpStatus; onInstall?:
 }
 
 export function ClaudeCodeBadge({ status, version }: { status: ClaudeCodeStatus; version?: string | null }) {
-  const config = getClaudeCodeBadgeConfig(status, version)
+  const { t } = useTranslation()
+  const config = getClaudeCodeBadgeConfig(status, t, version)
+
   if (!config) return null
 
   return (

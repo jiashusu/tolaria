@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { VaultEntry } from '../types'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -30,7 +31,6 @@ interface BreadcrumbBarProps {
   onToggleDiff: () => void
   rawMode?: boolean
   onToggleRaw?: () => void
-  /** When true, raw mode is forced (non-markdown file) — hide the toggle. */
   forceRawMode?: boolean
   showAIChat?: boolean
   onToggleAIChat?: () => void
@@ -42,7 +42,6 @@ interface BreadcrumbBarProps {
   onArchive?: () => void
   onUnarchive?: () => void
   onRenameFilename?: (path: string, newFilenameStem: string) => void
-  /** Ref for direct DOM manipulation — avoids re-render on scroll. */
   barRef?: React.Ref<HTMLDivElement>
 }
 
@@ -131,8 +130,9 @@ function IconActionButton({
 }
 
 function RawToggleButton({ rawMode, onToggleRaw }: { rawMode?: boolean; onToggleRaw?: () => void }) {
+  const { t } = useTranslation()
   const copy: ActionTooltipCopy = {
-    label: rawMode ? 'Return to the editor' : 'Open the raw editor',
+    label: rawMode ? t('breadcrumb.raw_close') : t('breadcrumb.raw_open'),
     shortcut: '⌘\\',
   }
   return (
@@ -147,8 +147,9 @@ function RawToggleButton({ rawMode, onToggleRaw }: { rawMode?: boolean; onToggle
 }
 
 function FavoriteAction({ favorite, onToggleFavorite }: { favorite: boolean; onToggleFavorite?: () => void }) {
+  const { t } = useTranslation()
   const copy: ActionTooltipCopy = {
-    label: favorite ? 'Remove from favorites' : 'Add to favorites',
+    label: favorite ? t('breadcrumb.favorite_remove') : t('breadcrumb.favorite_add'),
     shortcut: '⌘D',
   }
   return (
@@ -169,9 +170,11 @@ function OrganizedAction({
   organized: boolean
   onToggleOrganized?: () => void
 }) {
+  const { t } = useTranslation()
+
   if (!onToggleOrganized) return null
   const copy: ActionTooltipCopy = {
-    label: organized ? 'Set note as not organized' : 'Set note as organized',
+    label: organized ? t('breadcrumb.organized_unset') : t('breadcrumb.organized_set'),
     shortcut: '⌘E',
   }
   return (
@@ -191,17 +194,19 @@ function DiffAction({
   diffLoading,
   onToggleDiff,
 }: Pick<BreadcrumbBarProps, 'showDiffToggle' | 'diffMode' | 'diffLoading' | 'onToggleDiff'>) {
+  const { t } = useTranslation()
+
   if (!showDiffToggle) {
     return (
-      <IconActionButton copy={{ label: 'No diff is available yet' }} style={DISABLED_ICON_STYLE}>
+      <IconActionButton copy={{ label: t('breadcrumb.diff_unavailable') }} style={DISABLED_ICON_STYLE}>
         <GitBranch size={16} className={BREADCRUMB_ICON_CLASS} />
       </IconActionButton>
     )
   }
 
   const copy: ActionTooltipCopy = diffLoading
-    ? { label: 'Loading the diff' }
-    : { label: diffMode ? 'Return to the editor' : 'Show the current diff' }
+    ? { label: t('breadcrumb.diff_loading') }
+    : { label: diffMode ? t('breadcrumb.diff_close') : t('breadcrumb.diff_show') }
   return (
     <IconActionButton
       copy={copy}
@@ -214,8 +219,9 @@ function DiffAction({
 }
 
 function AIChatAction({ showAIChat, onToggleAIChat }: Pick<BreadcrumbBarProps, 'showAIChat' | 'onToggleAIChat'>) {
+  const { t } = useTranslation()
   const copy: ActionTooltipCopy = {
-    label: showAIChat ? 'Close the AI panel' : 'Open the AI panel',
+    label: showAIChat ? t('breadcrumb.ai_close') : t('breadcrumb.ai_open'),
     shortcut: '⇧⌘L',
   }
   return (
@@ -234,24 +240,27 @@ function ArchiveAction({
   onArchive,
   onUnarchive,
 }: Pick<VaultEntry, 'archived'> & Pick<BreadcrumbBarProps, 'onArchive' | 'onUnarchive'>) {
+  const { t } = useTranslation()
+
   if (archived) {
     return (
-      <IconActionButton copy={{ label: 'Restore this archived note' }} onClick={onUnarchive} className="hover:text-foreground">
+      <IconActionButton copy={{ label: t('breadcrumb.unarchive') }} onClick={onUnarchive} className="hover:text-foreground">
         <ArrowUUpLeft size={16} className={BREADCRUMB_ICON_CLASS} />
       </IconActionButton>
     )
   }
 
   return (
-    <IconActionButton copy={{ label: 'Archive this note' }} onClick={onArchive} className="hover:text-foreground">
+    <IconActionButton copy={{ label: t('breadcrumb.archive') }} onClick={onArchive} className="hover:text-foreground">
       <Archive size={16} className={BREADCRUMB_ICON_CLASS} />
     </IconActionButton>
   )
 }
 
 function DeleteAction({ onDelete }: Pick<BreadcrumbBarProps, 'onDelete'>) {
+  const { t } = useTranslation()
   return (
-    <IconActionButton copy={{ label: 'Delete this note', shortcut: '⌘⌫' }} onClick={onDelete} className="hover:text-destructive">
+    <IconActionButton copy={{ label: t('breadcrumb.delete'), shortcut: '⌘⌫' }} onClick={onDelete} className="hover:text-destructive">
       <Trash size={16} className={BREADCRUMB_ICON_CLASS} />
     </IconActionButton>
   )
@@ -261,9 +270,11 @@ function InspectorAction({
   inspectorCollapsed,
   onToggleInspector,
 }: Pick<BreadcrumbBarProps, 'inspectorCollapsed' | 'onToggleInspector'>) {
+  const { t } = useTranslation()
+
   if (!inspectorCollapsed) return null
   return (
-    <IconActionButton copy={{ label: 'Open the properties panel', shortcut: '⌘⇧I' }} onClick={onToggleInspector} className="hover:text-foreground" tooltipAlign="end">
+    <IconActionButton copy={{ label: t('breadcrumb.inspector_open'), shortcut: '⌘⇧I' }} onClick={onToggleInspector} className="hover:text-foreground" tooltipAlign="end">
       <SlidersHorizontal size={16} className={BREADCRUMB_ICON_CLASS} />
     </IconActionButton>
   )
@@ -287,12 +298,14 @@ function FilenameInput({
   onDraftStemChange,
   onBlur,
   onKeyDown,
+  ariaLabel,
 }: {
   inputRef: React.RefObject<HTMLInputElement | null>
   draftStem: string
   onDraftStemChange: (nextValue: string) => void
   onBlur: () => void
   onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void
+  ariaLabel: string
 }) {
   return (
     <Input
@@ -303,7 +316,7 @@ function FilenameInput({
       onKeyDown={onKeyDown}
       className="h-7 w-[180px] text-sm"
       data-testid="breadcrumb-filename-input"
-      aria-label="Rename filename"
+      aria-label={ariaLabel}
     />
   )
 }
@@ -312,10 +325,12 @@ function FilenameTrigger({
   entry,
   filenameStem,
   onStartEditing,
+  ariaLabel,
 }: {
   entry: VaultEntry
   filenameStem: string
   onStartEditing: () => void
+  ariaLabel: string
 }) {
   const handleKeyDown = useCallback((event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key !== 'Enter') return
@@ -332,7 +347,7 @@ function FilenameTrigger({
       onDoubleClick={onStartEditing}
       onKeyDown={handleKeyDown}
       data-testid="breadcrumb-filename-trigger"
-      aria-label={`Filename ${filenameStem}. Press Enter to rename`}
+      aria-label={ariaLabel}
     >
       <NoteTitleIcon icon={entry.icon} size={15} testId="breadcrumb-note-icon" />
       <span className="truncate">{filenameStem}</span>
@@ -344,14 +359,16 @@ function SyncFilenameButton({
   entryPath,
   syncStem,
   onRenameFilename,
+  label,
 }: {
   entryPath: string
   syncStem: string | null
   onRenameFilename?: (path: string, newFilenameStem: string) => void
+  label: string
 }) {
   if (!syncStem || !onRenameFilename) return null
   return (
-    <ActionTooltip copy={{ label: 'Rename the file to match the title' }} side="bottom">
+    <ActionTooltip copy={{ label }} side="bottom">
       <Button
         type="button"
         variant="ghost"
@@ -359,7 +376,7 @@ function SyncFilenameButton({
         className="text-muted-foreground hover:text-foreground"
         onClick={() => onRenameFilename(entryPath, syncStem)}
         data-testid="breadcrumb-sync-button"
-        aria-label="Rename the file to match the title"
+        aria-label={label}
       >
         <ArrowsClockwise size={14} />
       </Button>
@@ -373,22 +390,27 @@ function FilenameDisplay({
   syncStem,
   onRenameFilename,
   onStartEditing,
+  triggerAriaLabel,
+  syncLabel,
 }: {
   entry: VaultEntry
   filenameStem: string
   syncStem: string | null
   onRenameFilename?: (path: string, newFilenameStem: string) => void
   onStartEditing: () => void
+  triggerAriaLabel: string
+  syncLabel: string
 }) {
   return (
     <div className="flex min-w-0 items-center gap-1">
-      <FilenameTrigger entry={entry} filenameStem={filenameStem} onStartEditing={onStartEditing} />
-      <SyncFilenameButton entryPath={entry.path} syncStem={syncStem} onRenameFilename={onRenameFilename} />
+      <FilenameTrigger entry={entry} filenameStem={filenameStem} onStartEditing={onStartEditing} ariaLabel={triggerAriaLabel} />
+      <SyncFilenameButton entryPath={entry.path} syncStem={syncStem} onRenameFilename={onRenameFilename} label={syncLabel} />
     </div>
   )
 }
 
 function FilenameCrumb({ entry, onRenameFilename }: Pick<BreadcrumbBarProps, 'entry' | 'onRenameFilename'>) {
+  const { t } = useTranslation()
   const filenameStem = useMemo(() => entry.filename.replace(/\.md$/, ''), [entry.filename])
   const syncStem = useMemo(() => deriveSyncStem(entry), [entry])
   const [isEditing, setIsEditing] = useState(false)
@@ -427,6 +449,7 @@ function FilenameCrumb({ entry, onRenameFilename }: Pick<BreadcrumbBarProps, 'en
         onDraftStemChange={setDraftStem}
         onBlur={submitRename}
         onKeyDown={handleInputKeyDown}
+        ariaLabel={t('breadcrumb.rename_label')}
       />
     )
   }
@@ -438,6 +461,8 @@ function FilenameCrumb({ entry, onRenameFilename }: Pick<BreadcrumbBarProps, 'en
       syncStem={syncStem}
       onRenameFilename={onRenameFilename}
       onStartEditing={startEditing}
+      triggerAriaLabel={t('breadcrumb.filename_aria', { stem: filenameStem })}
+      syncLabel={t('breadcrumb.sync_filename')}
     />
   )
 }
@@ -484,7 +509,8 @@ function BreadcrumbTitle({
   entry,
   onRenameFilename,
 }: Pick<BreadcrumbBarProps, 'entry' | 'onRenameFilename'>) {
-  const typeLabel = entry.isA ?? 'Note'
+  const { t } = useTranslation()
+  const typeLabel = entry.isA ?? t('breadcrumb.type_fallback')
   return (
     <div className="flex items-center gap-1.5 min-w-0 text-sm text-muted-foreground">
       <span className="shrink-0">{typeLabel}</span>

@@ -1,5 +1,7 @@
 import { Bell, Package, Settings } from 'lucide-react'
 import { Megaphone } from '@phosphor-icons/react'
+import { useTranslation } from 'react-i18next'
+import { LanguageSwitcher } from '../LanguageSwitcher'
 import type { AiAgentId, AiAgentsStatus } from '../../lib/aiAgents'
 import type { VaultAiGuidanceStatus } from '../../lib/vaultAiGuidance'
 import type { ClaudeCodeStatus } from '../../hooks/useClaudeCodeStatus'
@@ -24,12 +26,6 @@ import {
 import { DISABLED_STYLE, ICON_STYLE, SEP_STYLE } from './styles'
 import type { VaultOption } from './types'
 import { VaultMenu } from './VaultMenu'
-
-const UPDATE_TOOLTIP = { label: 'Check for updates' } as const
-const ZOOM_RESET_TOOLTIP = { label: 'Reset the zoom level', shortcut: '⌘0' } as const
-const FEEDBACK_TOOLTIP = { label: 'Share feedback' } as const
-const NOTIFICATIONS_TOOLTIP = { label: 'Notifications are coming soon' } as const
-const SETTINGS_TOOLTIP = { label: 'Open settings', shortcut: '⌘,' } as const
 
 interface StatusBarPrimarySectionProps {
   modifiedCount: number
@@ -110,6 +106,7 @@ export function StatusBarPrimarySection({
   claudeCodeStatus,
   claudeCodeVersion,
 }: StatusBarPrimarySectionProps) {
+  const { t } = useTranslation()
   const {
     openAddRemote,
     closeAddRemote,
@@ -136,14 +133,14 @@ export function StatusBarPrimarySection({
         onRemoveVault={onRemoveVault}
       />
       <span style={SEP_STYLE}>|</span>
-      <ActionTooltip copy={UPDATE_TOOLTIP} side="top">
+      <ActionTooltip copy={{ label: t('status_bar.check_updates') }} side="top">
         <Button
           type="button"
           variant="ghost"
           size="xs"
           className="h-auto gap-1 rounded-sm px-1 py-0.5 text-[11px] font-medium text-muted-foreground hover:bg-[var(--hover)] hover:text-foreground"
           onClick={onCheckForUpdates}
-          aria-label={UPDATE_TOOLTIP.label}
+          aria-label={t('status_bar.check_updates')}
           aria-disabled={onCheckForUpdates ? undefined : true}
           data-testid="status-build-number"
         >
@@ -201,19 +198,20 @@ export function StatusBarSecondarySection({
   onOpenFeedback,
   onOpenSettings,
 }: StatusBarSecondarySectionProps) {
+  const { t } = useTranslation()
   void noteCount
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
       {zoomLevel === 100 ? null : (
-        <ActionTooltip copy={ZOOM_RESET_TOOLTIP} side="top">
+        <ActionTooltip copy={{ label: t('status_bar.reset_zoom'), shortcut: '⌘0' }} side="top">
           <Button
             type="button"
             variant="ghost"
             size="xs"
             className="h-auto rounded-sm px-1 py-0.5 text-[11px] font-medium text-muted-foreground hover:bg-[var(--hover)] hover:text-foreground"
             onClick={onZoomReset}
-            aria-label={ZOOM_RESET_TOOLTIP.label}
+            aria-label={t('status_bar.reset_zoom')}
             data-testid="status-zoom"
           >
             <span style={ICON_STYLE}>{zoomLevel}%</span>
@@ -221,34 +219,35 @@ export function StatusBarSecondarySection({
         </ActionTooltip>
       )}
       {onOpenFeedback && (
-        <ActionTooltip copy={FEEDBACK_TOOLTIP} side="top">
+        <ActionTooltip copy={{ label: t('status_bar.share_feedback') }} side="top">
           <Button
             type="button"
             variant="ghost"
             size="xs"
             className="h-6 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground"
             onClick={onOpenFeedback}
-            aria-label={FEEDBACK_TOOLTIP.label}
+            aria-label={t('status_bar.share_feedback')}
             data-testid="status-feedback"
           >
             <Megaphone size={14} />
-            Feedback
+            {t('status_bar.feedback')}
           </Button>
         </ActionTooltip>
       )}
-      <ActionTooltip copy={NOTIFICATIONS_TOOLTIP} side="top">
-        <span style={DISABLED_STYLE} aria-label={NOTIFICATIONS_TOOLTIP.label}>
+      <LanguageSwitcher className="h-6 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground" />
+      <ActionTooltip copy={{ label: t('status_bar.notifications_soon') }} side="top">
+        <span style={DISABLED_STYLE} aria-label={t('status_bar.notifications_soon')}>
           <Bell size={14} />
         </span>
       </ActionTooltip>
-      <ActionTooltip copy={SETTINGS_TOOLTIP} side="top" align="end">
+      <ActionTooltip copy={{ label: t('status_bar.open_settings'), shortcut: '⌘,' }} side="top" align="end">
         <Button
           type="button"
           variant="ghost"
           size="icon-xs"
           className="text-muted-foreground hover:bg-[var(--hover)] hover:text-foreground"
           onClick={onOpenSettings}
-          aria-label={SETTINGS_TOOLTIP.label}
+          aria-label={t('status_bar.open_settings')}
           data-testid="status-settings"
         >
           <Settings size={14} />
